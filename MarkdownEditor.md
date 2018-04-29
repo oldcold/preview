@@ -14,7 +14,7 @@ TL;DR:
 --
 * **Block producers get rewards of block production & votes proportion;**
 * **Approx. 1.6 tokens issued on every second;**
-* **For each producer, rewards claim can be approved at most once a day.**
+* **For each producer, rewards claim can be approved at most once per 24 hours.**
 
 
 
@@ -55,7 +55,7 @@ Producer table includes information of all registered producers, which are widel
 |`last_produced_block_time`|Last time produced|
 
 
-#### Per Second Payment Calculation
+### Per Second Payment Calculation
 **The amount of all rewards giving away is calculated using `system_contract::payment_per_block`**, determined by the product of system parameter `max_inflation_rate` (by default is 5%) and median of `percent_of_max_inflation_rate` from 21 active producers.
 
 
@@ -73,7 +73,7 @@ Currently there is no constraints on BPs' parameter `percent_of_max_inflation_ra
 
 
 
-#### Update Producer States From Election
+### Update Producer States From Election
 
 **After an election, some of parameters related to rewards are being set, which are to be used in rewards calculation.**
 
@@ -107,7 +107,7 @@ Currently there is no constraints on BPs' parameter `percent_of_max_inflation_ra
     }
     ```      
 
-#### Init New Cycle 
+### Init New Cycle 
 **Rewards rules are set upon every new cycle with the action of `system_contract::onblock`, inside this action, some global states and producer table will be updated accordingly.**
 
 1. Update cycle
@@ -169,7 +169,7 @@ How To Claim Rewards
 
 **BPs can claim rewards periodically (at most once a day), by pushing `claimrewards` actions. Fixed & Dynamic Rewards are calculated & transferred from `eosio` to the claimer.**
 
-#### BP Validation
+### BP Validation
 1. Check whether the **account name is the same with the push sender**, which means producers cannot claim rewards on behalf of others.
 2. Check whether the **push sender is among the producer list**, and being active (activity check might be removed in the coming versions).
 3. Check whether producer is claiming too frequent, **no more than once a day**.
@@ -189,7 +189,7 @@ void system_contract::claimrewards(const account_name& owner) {
 }
 ```
 
-#### Fixed Rewards Calculation
+### Fixed Rewards Calculation
 This amount is set at every beginning of a new cycle mentioned above. 
 
 ```cpp
@@ -201,7 +201,7 @@ void system_contract::claimrewards(const account_name& owner) {
 }
 ```
 
-#### Votes Calculation
+### Votes Calculation
 **Dynamic rewards are calculated based on votes proportion, the number total of votes is obtained by iterating the producer table.**
 
 1. Define a pointer index to the end of the producer table. This calculation will loop from newer registered producer to older.
@@ -240,7 +240,7 @@ void system_contract::claimrewards(const account_name& owner) {
 	}
 	```
 
-#### Dynamic Rewards Calculation
+### Dynamic Rewards Calculation
 1. Get global states parameters.
 2. Calculate **Dynamic Rewards** by  
 ![equation](https://latex.codecogs.com/gif.latex?%24%24gs.eos%5C_bucket.amount%5Ctimes%20%7Bproducer%5C_votes%20%5Cover%20total%5C_producer%5C_votes%7D%24%24)
@@ -264,7 +264,7 @@ void system_contract::claimrewards(const account_name& owner) {
 }   
 ```
 
-#### Transfer Rewards To The Producer
+### Transfer Rewards To The Producer
 1. Update producer table, set `last_reward_claim` to the current time, and reset block production rewards `per_block_payments` to be 0.
 
 	```cpp
