@@ -1,18 +1,26 @@
-#System Contract Part #1 - Block Producer Rewards
+#System Contract Part #1 - Block Producer Rewards 
 --
 
-In eos network, **eosio.system** contract enables users to 1) stake tokens, and then vote on producers (or worker proposals), 2) proxy their voting influence to other users, 3) register producers, 4) claim producer rewards, 5) delegate bandwidth and push other necessary actions to keep blockchain system running.
+In eos network, [**eosio.system**](https://github.com/EOSIO/eos/tree/DAWN-2018-04-27-ALPHA/contracts/eosio.system) contract enables users to 1) stake tokens, and then vote on producers (or worker proposals), 2) proxy their voting influence to other users, 3) register producers, 4) claim producer rewards, 5) delegate bandwidth and push other necessary actions to keep blockchain system running.
 
 In this series, we will go through this contract and talk about what is going on inside this contract and how to use it. 
 
 
 From this article, questions on **Who is getting rewards**, **How much is the rewards**, and **How to claim rewards** will be discussed successively. 
 
-Click [here](#conclusion) to read conclusions.
+**All codes present are based on commit of 9aa57f9*
 
+#TL;DR:
+--
+* **Block producers get rewards of block production & votes proporton;**
+* **Payment per block might fluctuate based on BPs' parameters;**
+* **Producers claim rewards from the system with frequency limit;**
+* **There is still room for imporvement of the contract.**
+
+--
 #Who Is Getting Rewards?
 --
-According to the source code and official introduction, 21 active **Block Producers (BP)** and 100 candidates will be determined from voting. BPs are able to claim rewards from both the number of blocks they have produced as well as their votes proportion, i.e. **Fixed Rewards** & **Dynamic Rewards** respectively. 
+**21 active Block Producers (BP) and 100 candidates will be determined from voting. BPs are able to claim rewards from both the number of blocks they have produced as well as their votes proportion, i.e. Fixed Rewards & Dynamic Rewards respectively.**
 
 BPs have to initiatively claim rewards from eos system, some related system level parameters are defined in `global_state_singleton` as follows:
 
@@ -27,9 +35,12 @@ BPs have to initiatively claim rewards from eos system, some related system leve
 |`last_bucket_fill_time`        |Last bucket fillg time, usually be upon a new cycle   |                    
 |`eos_bucket`                   |Bucket tokens balance, to be transferred to producers as dynamic rewards |
 
+![alt text](https://github.com/oldcold/preview/blob/master/Untitled%20Diagram.png)
+
 
 #How Much Will Producers Get?
 --
+**Amount of rewards is related to global parameters(e.g. inflation rate) and BP contribution. Based on the 5% inflation rate, approx. 1.6 tokens are issued systemwise.**
 
 Producer table includes information of all registered producers, which are widely used in system contract. Some columns related to producer rewards are listed below.
 
@@ -46,23 +57,25 @@ Producer table includes information of all registered producers, which are widel
 
 
 ###Per Second Payment Calculation
-The amount of all rewards giving away is calculated using `system_contract::payment_per_block`, determined by the product of system parameter `max_inflation_rate` (by default is 5%) and median of `percent_of_max_inflation_rate` from 21 active producers.
+**The amount of all rewards giving away is calculated using `system_contract::payment_per_block`**, determined by the product of system parameter `max_inflation_rate` (by default is 5%) and median of `percent_of_max_inflation_rate` from 21 active producers.
+
 
 $$annual\_rate = {{max\_inflation\_rate\times percent\_of\_max\_inflation\_rate[median] }\over 10000}$$
 
 $$continuous\_rate = log1p(annual\_rate)$$
 
-$$per\_second\_payment = {2\times {{continuous\_rate\times token_supply.amount] }\over blocks\_per\_year}}$$
+$$per\_second\_payment = {2\times {{continuous\_rate\times token\_supply.amount }\over blocks\_per\_year}}$$
 
 	 
 
 
-If we assume `percent_of_max_inflation_rate` to be 1, based on the 5% inflation rate from code and continuous rate formula, maximum **1.5898** eos tokens are issued per second (might be reduced if `max_inflation_rate` is modified in official release). This amount will be splitted into 2 equal parts for Fixed & Dynamic Rewards.
+Currently there is no constraints on BPs' parameter `percent_of_max_inflation_rate`. If we assume it to be 100%, based on the 5% inflation rate from code and continuous rate formula, **maximum 1.5898 eos tokens are issued per second** (might be reduced if `max_inflation_rate` is modified in official release). This amount will be splitted into 2 "almost equal" parts for Fixed & Dynamic Rewards.
 
 
 
 ###Update Producer States From Election
-1. After an election, some of parameters related to rewards are being set, which are to be used in rewards calculation. 
+
+**After an election, some of parameters related to rewards are being set, which are to be used in rewards calculation.**
 
 2. The amount of token calculated in the previous section will be added into `parameters.payment_per_block` for Fixed Rewards and `parameters.payment_to_eos_bucket` for Dynamic Rewards.
 
@@ -95,7 +108,7 @@ If we assume `percent_of_max_inflation_rate` to be 1, based on the 5% inflation 
     ```      
 
 ###Init New Cycle 
-Rewards rules are set upon every new cycle with the action of `system_contract::onblock`, inside this action, some global states and producer table will be updated accordingly.
+**Rewards rules are set upon every new cycle with the action of `system_contract::onblock`, inside this action, some global states and producer table will be updated accordingly.**
 
 1. Update cycle
 
@@ -154,12 +167,12 @@ Rewards rules are set upon every new cycle with the action of `system_contract::
 #How To Claim Rewards
 --
 
-BPs can claim rewards periodically (at most once a day), by pushing `claimrewards` actions. Based on the latest committed source code, we could take a closer look at what's running behind. 
+**BPs can claim rewards periodically (at most once a day), by pushing `claimrewards` actions. Fixed & Dynamic Rewards are calculated & transferred from `eosio` to the claimer.**
 
-###Validation
-1. Check whether the account name is the same with the push sender, which means producers cannot claim rewards on behalf of others.
-2. Check whether the push sender is among the producer list, and being active (activity check might be removed in the coming versions).
-3. Check whether producer is claiming too frequent, no more than once a day.
+###BP Validation
+1. Check whether the **account name is the same with the push sender**, which means producers cannot claim rewards on behalf of others.
+2. Check whether the **push sender is among the producer list**, and being active (activity check might be removed in the coming versions).
+3. Check whether producer is claiming too frequent, **no more than once a day**.
 
 ```cpp	
 void system_contract::claimrewards(const account_name& owner) {
@@ -189,7 +202,7 @@ void system_contract::claimrewards(const account_name& owner) {
 ```
 
 ###Votes Calculation
-Dynamic rewards are calculated based on votes proportion, the following part is about the vote calculation process.
+**Dynamic rewards are calculated based on votes proportion, the number total of votes is obtained by iterating the producer table.**
 
 1. Define a pointer index to the end of the producer table. This calculation will loop from newer registered producer to older.
 
@@ -279,15 +292,18 @@ $$gs.eos\_bucket.amount\times {producer\_votes \over total\_producer\_votes}$$
 ```
 
 <a name="conclusion"></a>
+
+For the time being rewards are distributed from a super user `eosio`, which means additional tokens will be created and assigned to the same account who is able to issue them upon the whole network launch.
+
 #Conclusion
 
 1. Block producers get **Fixed Rewards** from blocks they are to produce, and **Dynamic Rewards** from proportion of votes they possess.
 
-2. **Payment per block** might fluctuate based on BPs' parameters. Based on current configuration, **1.5898** eos tokens will become 'visible' every second, which likely to be reduced upon release.
+2. **Payment per block** might fluctuate based on BPs' parameters. Based on current configuration, **1.5898** eos tokens will become "visible" every second, which likely to be reduced upon release.
 
 3. Producers have to **initiatively** claim rewards from the system, no producer is able to claim more than **once a day**.
 
-4. For the time being rewards are distributed from a super user `eosio`, which means additional tokens will be created and assigned to the same account who is able to issue them upon the whole network launch. We assume this is a temporary implementation for easy test and look forward to an improvement here. 
+4. Some imperfect implementations (lack of constraints, etc) from the current code, we assume this is a stopgap for easy test and look forward to an improvement in the coming versions. 
 
 *In the following articles, we are going to talk about some detailed implementation about* **voting process***, including producer registration, producer votiong and proxy related stuff.*
 
