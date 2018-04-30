@@ -279,7 +279,7 @@ void system_contract::claimrewards(const account_name& owner) {
 	```cpp
 	void system_contract::claimrewards(const account_name& owner) {
    		...
-      		//            eosio_assert( rewards > system_token_type(), "no rewards available to claim" );
+      		// eosio_assert( rewards > system_token_type(), "no rewards available to claim" );
    		eosio_assert( rewards > asset(0, S(4,EOS)), "no rewards available to claim" );
 
    		producers_tbl.modify( prod, 0, [&](auto& p) {
