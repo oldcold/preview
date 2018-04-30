@@ -307,7 +307,7 @@ Conclusion
 
 4. Some imperfect implementations (lack of constraints, etc) from the current code, we assume this is a stopgap for easy test and look forward to an improvement in the coming versions. 
 
-*In the following articles, we are going to talk about some detailed implementation about **voting process**, *including producer registration, producer voting and proxy related stuff.*
+*In the following articles, we are going to talk about some detailed implementation about* **voting process**, *including producer registration, producer voting and proxy related stuff.*
 
 **Stay tuned with [Eosio.SG](http://eosio.sg/): [Telegram](https://t.me/eosiosg), [Medium](https://medium.com/@eosiosg).**
 
