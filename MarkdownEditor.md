@@ -98,9 +98,12 @@ Currently there is no constraints on BPs' parameter `percent_of_max_inflation_ra
 
     ```cpp
     	...
-      	auto issue_quantity = parameters.blocks_per_cycle * (parameters.payment_per_block + parameters.payment_to_eos_bucket);
-      	INLINE_ACTION_SENDER(eosio::token, issue)( N(eosio.token), {{N(eosio),N(active)}},
-                                                 {N(eosio), issue_quantity, std::string("producer pay")} );
+      	auto issue_quantity = parameters.blocks_per_cycle * 
+		(parameters.payment_per_block + parameters.payment_to_eos_bucket);
+		
+      	INLINE_ACTION_SENDER(eosio::token, issue)
+		( N(eosio.token), {{N(eosio),N(active)}}, 
+			{N(eosio), issue_quantity, std::string("producer pay")} );
 
       	set_blockchain_parameters( parameters );
       	gs.set( parameters, _self );
@@ -155,7 +158,7 @@ Currently there is no constraints on BPs' parameter `percent_of_max_inflation_ra
 	void system_contract::onblock(const block_header& header) {
 		...
    		const uint32_t num_of_payments = header.timestamp - parameters.last_bucket_fill_time;
-   		//            const system_token_type to_eos_bucket = num_of_payments * parameters.payment_to_eos_bucket;
+   		//  const system_token_type to_eos_bucket = num_of_payments * parameters.payment_to_eos_bucket;
    		const asset to_eos_bucket = num_of_payments * parameters.payment_to_eos_bucket;
    		parameters.last_bucket_fill_time = header.timestamp;
    		parameters.eos_bucket += to_eos_bucket;
@@ -177,13 +180,16 @@ How To Claim Rewards
 ```cpp	
 void system_contract::claimrewards(const account_name& owner) {
    	require_auth(owner);
-   		eosio_assert(current_sender() == account_name(), "claimrewards can not be part of a deferred transaction");
+   	eosio_assert(current_sender() == account_name(), 
+		"claimrewards can not be part of a deferred transaction");
    	producers_table producers_tbl( _self, _self );
    	auto prod = producers_tbl.find(owner);
    	eosio_assert(prod != producers_tbl.end(), "account name is not in producer list");
-   	eosio_assert(prod->active(), "producer is not active"); // QUESTION: Why do we want to prevent inactive producers from claiming their earned rewards?
+   	eosio_assert(prod->active(), "producer is not active"); 
+	// QUESTION: Why do we want to prevent inactive producers from claiming their earned rewards?
    	if( prod->last_rewards_claim > 0 ) {
-      	eosio_assert(now() >= prod->last_rewards_claim + seconds_per_day, "already claimed rewards within a day");
+      	eosio_assert(now() >= prod->last_rewards_claim + seconds_per_day, 
+		"already claimed rewards within a day");
    	}
    	...
 }
@@ -253,8 +259,11 @@ void system_contract::claimrewards(const account_name& owner) {
       global_state_singleton gs( _self, _self ); 
       if( gs.exists() ) {
          auto parameters = gs.get();
-         //                  auto share_of_eos_bucket = system_token_type( static_cast<uint64_t>( (prod->total_votes * parameters.eos_bucket.quantity) / total_producer_votes ) ); // This will be improved in the future when total_votes becomes a double type.
-         auto share_of_eos_bucket = eosio::asset( static_cast<int64_t>( (prod->total_votes * parameters.eos_bucket.amount) / total_producer_votes ) );
+         // auto share_of_eos_bucket = system_token_type( static_cast<uint64_t>( 
+	 (prod->total_votes * parameters.eos_bucket.quantity) / total_producer_votes ) ); 
+	 // This will be improved in the future when total_votes becomes a double type.
+         auto share_of_eos_bucket = eosio::asset( static_cast<int64_t>( 
+		(prod->total_votes * parameters.eos_bucket.amount) / total_producer_votes ) );
          rewards += share_of_eos_bucket;
          parameters.eos_bucket -= share_of_eos_bucket;
          gs.set( parameters, _self );
@@ -287,7 +296,9 @@ void system_contract::claimrewards(const account_name& owner) {
 	void system_contract::claimrewards(const account_name& owner) {
    		...
 
-   		INLINE_ACTION_SENDER(eosio::token, transfer)( N(eosio.token), {N(eosio),N(active)}, { N(eosio), owner, rewards, std::string("producer claiming rewards") } );
+   		INLINE_ACTION_SENDER(eosio::token, transfer)
+			( N(eosio.token), {N(eosio),N(active)}, 
+				{ N(eosio), owner, rewards, std::string("producer claiming rewards") } );
 	}
 	```
 
