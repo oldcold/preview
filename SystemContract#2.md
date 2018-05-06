@@ -17,10 +17,7 @@ TL;DR:
 * **Refunding process (from staked) takes up to 3 days to be available in token balance**
 * **Newer votes process higher voting weights**
 
-
 ![voting](https://github.com/oldcold/preview/blob/master/voting.png)
-![newCycle]()
-
 Producer Registration
 --
 **Every account should register to be a producer first before it can be voted. This process is done by pushing a `system_contract::regproducer` action.**
